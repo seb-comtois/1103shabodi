@@ -1,3 +1,5 @@
-print("herl[d")
+import tkinter
+
+print("hey its seb")
 
 print("hey its ben")
