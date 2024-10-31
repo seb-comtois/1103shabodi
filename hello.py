@@ -1,7 +1,24 @@
-import tkinter
+from tkinter import *
+from PIL import Image, ImageTk
 
-print("hey its seb")
+# configuration for the window
+root = Tk()
+root.title("Remote mentor tool")
+root.configure(background="grey")
+root.minsize(200, 200)
+root.maxsize(1920, 1080)
 
-print("hey its ben")
+#create text
+text1 = Label(root, text="Shabodi mentorship software")
+text1.pack()
 
-print("hey its Sam")
+
+#import image
+image_shabodi = PhotoImage(file="shabodi_logo.gif")
+img = Label(root, image = image_shabodi)
+img.pack()
+
+
+
+#needed to run the program
+root.mainloop()
