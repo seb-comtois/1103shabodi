@@ -2,6 +2,7 @@ from tkinter import *
 from tkinter import font
 from PIL import Image, ImageTk
 import functions
+import login
 
 # configuration for the window
 root = Tk()
@@ -27,6 +28,14 @@ functions.position_image(root, img1)
 #login button
 log_in = Button(root, text="Log in", bg="grey", width=20, height=2, font=title, command=lambda: functions.login_window(root, title))
 log_in.place(x=392, y=300)
+
+
+
+
+
+
+
+
 
 #needed to run the program
 root.mainloop()
