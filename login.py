@@ -13,3 +13,6 @@ def login_window(root, title_font):
 
     back_button = Button(login_window, text="Back", command=login_window.destroy)
     back_button.place(x=10, y=760)
+
+    text = Text(root, width=20, height=2)
+    text.pack()
