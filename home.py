@@ -26,7 +26,7 @@ root.update_idletasks()
 functions.position_image(root, img1)
 
 #login button
-log_in = Button(root, text="Log in", bg="grey", width=20, height=2, font=title, command=lambda: functions.login_window(root, title))
+log_in = Button(root, text="Log in", bg="grey", width=20, height=2, font=title, command=lambda: login.login_window(root, title))
 log_in.place(x=392, y=300)
 
 
