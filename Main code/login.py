@@ -1,4 +1,9 @@
 from tkinter import Toplevel, Label, Entry, Button, messagebox
+import hashlib
+from dashboard import open_dashboard
+
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
 
 def login_window(root, refresh_main_window):
     print("Creating Login Window")
@@ -19,16 +24,28 @@ def login_window(root, refresh_main_window):
 
     def verify_login():
         username = username_entry.get()
-        password = password_entry.get()
-        # Implement your user verification logic here
-        if username == "user" and password == "pass":  # Placeholder logic
-            messagebox.showinfo("Login Successful", "You have logged in successfully!")
-            login_win.destroy()
-            refresh_main_window(root)
-        else:
+        password = hash_password(password_entry.get())
+        
+        login_button.config(state="disabled")
+        
+        try:
+            with open("data/users.txt", "r") as file:
+                users = file.readlines()
+            for user in users:
+                saved_username, saved_password = user.strip().split(",")
+                if saved_username == username and saved_password == password:
+                    messagebox.showinfo("Login Successful", "You have logged in successfully!")
+                    login_win.destroy()  # Close the login window
+                    open_dashboard(root, refresh_main_window)  # Open the dashboard after login
+                    return
             messagebox.showerror("Login Failed", "Incorrect username or password")
+        except FileNotFoundError:
+            messagebox.showerror("Error", "User data file not found.")
+        
+        login_button.config(state="normal")
 
-    Button(login_win, text="Log In", command=verify_login, bg="grey", fg="black").pack(pady=20)
+    login_button = Button(login_win, text="Log In", command=verify_login, bg="grey", fg="black")
+    login_button.pack(pady=20)
     Button(login_win, text="Back", command=lambda: [login_win.destroy(), refresh_main_window(root)], bg="grey", fg="black").place(x=10, y=260)
     
     login_win.protocol("WM_DELETE_WINDOW", lambda: [login_win.destroy(), refresh_main_window(root)])
