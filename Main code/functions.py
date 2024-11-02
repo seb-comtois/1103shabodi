@@ -1,6 +1,8 @@
 # functions.py
 from tkinter import *
 
+
+#move image on homescreen
 def position_image(root, img):
     window_width = root.winfo_width()
     window_height = root.winfo_height()

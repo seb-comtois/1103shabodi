@@ -1,6 +1,6 @@
 from tkinter import *
 
-
+#login page function
 
 def login_window(root, title_font):
     login_window = Toplevel(root)
