@@ -1,0 +1,52 @@
+import cv2
+import socket
+import struct
+import pickle
+import pyaudio
+ 
+# Setup for video capture
+video_capture = cv2.VideoCapture(0)  # Use the default camera
+ 
+# Setup for audio capture
+audio_format = pyaudio.paInt16  # Audio format
+channels = 1                    # Mono audio
+rate = 44100                    # Sampling rate
+chunk = 1024                    # Audio chunk size
+audio = pyaudio.PyAudio()
+audio_stream = audio.open(format=audio_format, channels=channels, rate=rate, input=True, frames_per_buffer=chunk)
+ 
+# Setup socket connection
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server_socket.bind(('0.0.0.0', 9999))  # Bind to all available interfaces on port 9999
+server_socket.listen(5)
+print("Waiting for connection...")
+ 
+# Accept a connection from your client
+conn, addr = server_socket.accept()
+print(f"Connected by {addr}")
+ 
+try:
+    while True:
+        # Capture video frame
+        ret, frame = video_capture.read()
+        if not ret:
+            break
+ 
+        # Serialize and send video frame
+        video_data = pickle.dumps(frame)
+        video_message_size = struct.pack("L", len(video_data))
+        conn.sendall(video_message_size + video_data)
+ 
+        # Capture and send audio data
+        #audio_data = audio_stream.read(chunk)
+        #audio_message_size = struct.pack("L", len(audio_data))
+        #conn.sendall(audio_message_size + audio_data)
+ 
+finally:
+    # Clean up
+    conn.close()
+    video_capture.release()
+    audio_stream.stop_stream()
+    audio_stream.close()
+    audio.terminate()
+    server_socket.close()
