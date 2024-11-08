@@ -39,4 +39,7 @@ login_button.place(relx=0.5, rely=0.55, anchor="center")
 signup_button = Button(root, text="Sign Up", bg="grey", width=20, height=2, font=title_font, command=lambda: open_signup(root))
 signup_button.place(relx=0.5, rely=0.65, anchor="center")
 
+import dashboard
+Button(root, text="Start stream", command=dashboard.start_stream_thread).place(relx=0.5, rely=0.75, anchor="center")
+
 root.mainloop()
