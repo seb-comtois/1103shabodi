@@ -1,14 +1,16 @@
-from tkinter import Toplevel, Label, Button, messagebox
+from tkinter import Toplevel, Label, Button
 import socket
 import struct
 import pickle
 import cv2
-import pyaudio
 import threading
 
-# Configure the server address and port (remote computer running server.py)
-SERVER_ADDRESS = '192.168.1.136'  # Replace with the actual IP address of your friend's laptop
+# Configure the server address and port for the secondary computer connection
+SERVER_ADDRESS = '172.20.10.3'  # Replace with the IP of the secondary computer
 SERVER_PORT = 9999
+
+# Flag to control the video feed
+stop_epoccam_feed = False
 
 def open_dashboard(root, refresh_main_window):
     print("Opening Dashboard Window")
@@ -19,46 +21,105 @@ def open_dashboard(root, refresh_main_window):
 
     Label(dashboard_win, text="Dashboard", font=("Helvetica", 16, "bold"), fg="white", bg="#1A1A1A").pack(pady=20)
 
-    # Button to connect to your friend's laptop
-    Button(dashboard_win, text="Connect to Friend's Laptop", bg="grey", fg="black", width=25, height=2,
-           command=start_video_audio_stream).pack(pady=10)
+    # Button to connect to the secondary computer
+    Button(dashboard_win, text="Connect to Secondary Computer", bg="grey", fg="black", width=25, height=2,
+           command=start_secondary_computer_stream_thread).pack(pady=10)
+
+    # Button to connect to EpocCam
+    Button(dashboard_win, text="Connect to EpocCam", bg="grey", fg="black", width=25, height=2,
+           command=lambda: start_epoccam_stream_thread(dashboard_win, refresh_main_window, root)).pack(pady=10)
 
     # Back button to return to the main screen
-    Button(dashboard_win, text="Back", command=lambda: [dashboard_win.destroy(), refresh_main_window(root)], bg="grey", fg="black").place(x=10, y=360)
+    Button(dashboard_win, text="Back", command=lambda: [dashboard_win.destroy(), refresh_main_window(root)],
+           bg="grey", fg="black").place(x=10, y=360)
 
     dashboard_win.protocol("WM_DELETE_WINDOW", lambda: [dashboard_win.destroy(), refresh_main_window(root)])
 
-def start_video_audio_stream():
-    # Connect to the server
-    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client_socket.connect((SERVER_ADDRESS, SERVER_PORT))
+def start_secondary_computer_stream_thread():
+    threading.Thread(target=receive_secondary_computer_stream, daemon=True).start()
 
-    # Set up audio playback
-    p = pyaudio.PyAudio()
-    stream = p.open(format=pyaudio.paInt16, channels=1, rate=44100, output=True, frames_per_buffer=1024)
+def start_epoccam_stream_thread(dashboard_win, refresh_main_window, root):
+    global stop_epoccam_feed
+    stop_epoccam_feed = False  # Reset the flag to allow the video feed to start
+    threading.Thread(target=receive_epoccam_stream, args=(dashboard_win, refresh_main_window, root), daemon=True).start()
+
+def receive_secondary_computer_stream():
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        client_socket.connect((SERVER_ADDRESS, SERVER_PORT))
+    except ConnectionRefusedError:
+        print("Failed to connect to the secondary computer. Make sure 'server.py' is running on the secondary computer.")
+        return
+
+    data = b""
+    payload_size = struct.calcsize("L")
 
     try:
         while True:
-            # Receive and display video frame
-            video_message_size = struct.unpack("L", client_socket.recv(struct.calcsize("L")))[0]
-            video_data = b""
-            while len(video_data) < video_message_size:
-                video_data += client_socket.recv(4096)
-            frame = pickle.loads(video_data)
-            cv2.imshow('Smart Glasses Video', frame)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
+            while len(data) < payload_size:
+                packet = client_socket.recv(4096)
+                if not packet:
+                    return
+                data += packet
+
+            packed_msg_size = data[:payload_size]
+            data = data[payload_size:]
+            msg_size = struct.unpack("L", packed_msg_size)[0]
+
+            while len(data) < msg_size:
+                packet = client_socket.recv(4096)
+                if not packet:
+                    return
+                data += packet
+
+            frame_data = data[:msg_size]
+            data = data[msg_size:]
+            frame = pickle.loads(frame_data)
+            cv2.imshow("Secondary Computer Video", frame)
+
+            if cv2.waitKey(1) == ord('q'):
                 break
 
-            # Receive and play audio data
-            audio_message_size = struct.unpack("L", client_socket.recv(struct.calcsize("L")))[0]
-            audio_data = b""
-            while len(audio_data) < audio_message_size:
-                audio_data += client_socket.recv(4096)
-            stream.write(audio_data)
-    
     finally:
         client_socket.close()
-        stream.stop_stream()
-        stream.close()
-        p.terminate()
-        cv2.destroyAllWindows()
+        cv2.destroyWindow("Secondary Computer Video")
+
+def receive_epoccam_stream(dashboard_win, refresh_main_window, root):
+    global stop_epoccam_feed
+    epoccam_index = 1  # Force to use EpocCam on index 1
+
+    # Open EpocCam feed
+    epoccam_capture = cv2.VideoCapture(epoccam_index)
+    if not epoccam_capture.isOpened():
+        print("Could not open EpocCam on index 1. Ensure it is connected and recognized by your computer.")
+        return
+
+    # Create a back button in the Tkinter window to stop the feed
+    back_button = Button(dashboard_win, text="Back", bg="grey", fg="black", command=lambda: stop_feed_and_return(dashboard_win, refresh_main_window, root))
+    back_button.place(x=10, y=360)
+
+    try:
+        while not stop_epoccam_feed:
+            ret, frame = epoccam_capture.read()
+            if not ret:
+                print("Failed to receive frame from EpocCam.")
+                break
+
+            cv2.imshow("EpocCam Video", frame)
+            if cv2.waitKey(1) == ord('q') or stop_epoccam_feed:
+                break
+
+    finally:
+        epoccam_capture.release()
+        cv2.destroyWindow("EpocCam Video")
+
+def stop_feed_and_return(dashboard_win, refresh_main_window, root):
+    global stop_epoccam_feed
+    stop_epoccam_feed = True  # Set the flag to stop the video feed
+    dashboard_win.destroy()
+    refresh_main_window(root)
+
+# Run test_camera_indices directly when running dashboard.py
+if __name__ == "__main__":
+    # Directly attempt to open EpocCam on index 1 for testing
+    receive_epoccam_stream()

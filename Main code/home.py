@@ -1,6 +1,7 @@
 from tkinter import Tk, Label, Button, font, PhotoImage
 import login
 import signup
+import dashboard  # Ensure dashboard is imported
 
 def refresh_main_window(root):
     print("Refreshing Main Window")
@@ -39,7 +40,8 @@ login_button.place(relx=0.5, rely=0.55, anchor="center")
 signup_button = Button(root, text="Sign Up", bg="grey", width=20, height=2, font=title_font, command=lambda: open_signup(root))
 signup_button.place(relx=0.5, rely=0.65, anchor="center")
 
-import dashboard
-Button(root, text="Start stream", command=dashboard.start_stream_thread).place(relx=0.5, rely=0.75, anchor="center")
+# Buttons to start streaming from the secondary computer and EpocCam
+Button(root, text="Start Secondary Computer Stream", command=dashboard.start_secondary_computer_stream_thread).place(relx=0.5, rely=0.75, anchor="center")
+Button(root, text="Start EpocCam Stream", command=dashboard.start_epoccam_stream_thread).place(relx=0.5, rely=0.85, anchor="center")
 
 root.mainloop()
