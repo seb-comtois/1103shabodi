@@ -11,12 +11,16 @@ def refresh_main_window(root):
 def open_login(root):
     print("Opening Login Window")
     root.withdraw()
-    login.login_window(root, refresh_main_window)
+    login.login_window(root, refresh_main_window, open_dashboard)
 
 def open_signup(root):
     print("Opening Sign-Up Window")
     root.withdraw()
     signup.signup_window(root, refresh_main_window)
+
+def open_dashboard(root):
+    root.withdraw()  # Hide the main window when opening the dashboard
+    dashboard.open_dashboard(root, refresh_main_window)
 
 root = Tk()
 root.title("Remote Mentor Tool")
@@ -39,9 +43,5 @@ login_button.place(relx=0.5, rely=0.55, anchor="center")
 
 signup_button = Button(root, text="Sign Up", bg="grey", width=20, height=2, font=title_font, command=lambda: open_signup(root))
 signup_button.place(relx=0.5, rely=0.65, anchor="center")
-
-# Buttons to start streaming from the secondary computer and EpocCam
-Button(root, text="Start Secondary Computer Stream", command=dashboard.start_secondary_computer_stream_thread).place(relx=0.5, rely=0.75, anchor="center")
-Button(root, text="Start EpocCam Stream", command=dashboard.start_epoccam_stream_thread).place(relx=0.5, rely=0.85, anchor="center")
 
 root.mainloop()

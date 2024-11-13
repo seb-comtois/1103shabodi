@@ -5,8 +5,8 @@ from dashboard import open_dashboard
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
-def login_window(root, refresh_main_window):
-    print("Creating Login Window")
+def login_window(root, refresh_main_window, open_dashboard):
+    print("Creating Login Window")  # Debug print to confirm function call
     login_win = Toplevel(root)
     login_win.title("Log In")
     login_win.geometry("400x300")
@@ -36,7 +36,7 @@ def login_window(root, refresh_main_window):
                 if saved_username == username and saved_password == password:
                     messagebox.showinfo("Login Successful", "You have logged in successfully!")
                     login_win.destroy()  # Close the login window
-                    open_dashboard(root, refresh_main_window)  # Open the dashboard after login
+                    open_dashboard(root)  # Open the dashboard after login
                     return
             messagebox.showerror("Login Failed", "Incorrect username or password")
         except FileNotFoundError:

@@ -4,13 +4,23 @@ import struct
 import pickle
 import threading
 import pyaudio
-import wave
+
+# Define server IP and ports for video and audio streams
+SERVER_IP = '172.20.10.3'  # Replace with actual IP address of the sender
+VIDEO_PORT = 9999
+AUDIO_PORT = 9998  # Separate port for audio
+
+# Audio stream settings
+AUDIO_FORMAT = pyaudio.paInt16
+CHANNELS = 1
+RATE = 44100
+CHUNK = 1024
 
 # Function to receive and display video feed from the secondary computer
 def video_receiver():
-    # Setup socket
-    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client_socket.connect(('172.20.10.3', 9999))  # Replace with the actual IP address
+    # Setup socket for video
+    video_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    video_socket.connect((SERVER_IP, VIDEO_PORT))
 
     data = b""
     payload_size = struct.calcsize("L")  # Size of packed frame length
@@ -18,7 +28,7 @@ def video_receiver():
     while True:
         # Receive frame size
         while len(data) < payload_size:
-            packet = client_socket.recv(4096)  # Adjust buffer size if needed
+            packet = video_socket.recv(4096)  # Adjust buffer size if needed
             if not packet:
                 break
             data += packet
@@ -31,7 +41,7 @@ def video_receiver():
         msg_size = struct.unpack("L", packed_msg_size)[0]
 
         while len(data) < msg_size:
-            data += client_socket.recv(4096)
+            data += video_socket.recv(4096)
 
         # Extract frame and display
         frame_data = data[:msg_size]
@@ -42,46 +52,37 @@ def video_receiver():
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
-    client_socket.close()
+    video_socket.close()
     cv2.destroyAllWindows()
 
-# Function to capture audio
-def audio_capture():
-    chunk = 1024  # Audio chunk size
-    format = pyaudio.paInt16  # Format for recording
-    channels = 2  # Number of audio channels
-    rate = 44100  # Audio sample rate
-    p = pyaudio.PyAudio()
-    stream = p.open(format=format,
-                    channels=channels,
-                    rate=rate,
-                    input=True,
-                    frames_per_buffer=chunk)
+# Function to receive and play audio in real-time
+def audio_receiver():
+    # Setup socket for audio
+    audio_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    audio_socket.connect((SERVER_IP, AUDIO_PORT))
 
-    frames = []
-    print("Recording audio... Press Ctrl+C to stop.")
+    # Initialize PyAudio
+    p = pyaudio.PyAudio()
+    stream = p.open(format=AUDIO_FORMAT, channels=CHANNELS, rate=RATE, output=True, frames_per_buffer=CHUNK)
+
     try:
         while True:
-            data = stream.read(chunk)
-            frames.append(data)
-    except KeyboardInterrupt:
-        print("Recording stopped.")
-    
-    stream.stop_stream()
-    stream.close()
-    p.terminate()
+            # Receive audio data
+            audio_data = audio_socket.recv(CHUNK)
+            if not audio_data:
+                break
+            # Play audio data in real-time
+            stream.write(audio_data)
+    finally:
+        # Cleanup audio resources
+        stream.stop_stream()
+        stream.close()
+        p.terminate()
+        audio_socket.close()
 
-    # Save the recorded audio to a file
-    wf = wave.open("output.wav", 'wb')
-    wf.setnchannels(channels)
-    wf.setsampwidth(p.get_sample_size(format))
-    wf.setframerate(rate)
-    wf.writeframes(b''.join(frames))
-    wf.close()
-
-# Run video and audio capture in separate threads
+# Run video and audio receivers in separate threads
 video_thread = threading.Thread(target=video_receiver)
-audio_thread = threading.Thread(target=audio_capture)
+audio_thread = threading.Thread(target=audio_receiver)
 
 video_thread.start()
 audio_thread.start()
