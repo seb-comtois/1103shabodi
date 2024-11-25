@@ -1,0 +1,101 @@
+import cv2
+import socket
+import struct
+import pickle
+import json
+import threading
+
+# Server configuration
+SERVER_IP = '0.0.0.0'  # Listen on all interfaces
+VIDEO_PORT = 9999
+DRAW_PORT = 9997
+
+# Video capture
+cap = cv2.VideoCapture(0)
+
+# Global variables for drawing
+drawing = False  # True when the mouse is pressed
+last_point = None  # Last point to track the drawing
+drawings = []  # List of lines [(start_x, start_y, end_x, end_y)]
+
+# Mouse callback function
+def draw(event, x, y, flags, param):
+    global drawing, last_point, drawings
+    if event == cv2.EVENT_LBUTTONDOWN:
+        drawing = True
+        last_point = (x, y)
+    elif event == cv2.EVENT_MOUSEMOVE and drawing:
+        current_point = (x, y)
+        drawings.append((*last_point, *current_point))
+        last_point = current_point
+    elif event == cv2.EVENT_LBUTTONUP:
+        drawing = False
+
+cv2.namedWindow("Video")
+cv2.setMouseCallback("Video", draw)
+
+# Function to handle video streaming
+def video_stream():
+    video_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    video_socket.bind((SERVER_IP, VIDEO_PORT))
+    video_socket.listen(1)
+    print("Waiting for video connection...")
+    conn, addr = video_socket.accept()
+    print("Video connection established:", addr)
+
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        # Draw on the video frame
+        for line in drawings:
+            cv2.line(frame, (line[0], line[1]), (line[2], line[3]), (0, 0, 255), 2)
+
+        # Serialize and send the frame
+        data = pickle.dumps(frame)
+        msg_size = struct.pack("L", len(data))
+        conn.sendall(msg_size + data)
+
+        # Show the video locally
+        cv2.imshow("Video", frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    conn.close()
+    video_socket.close()
+
+# Function to handle sending drawing data
+def send_drawing():
+    draw_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    draw_socket.bind((SERVER_IP, DRAW_PORT))
+    draw_socket.listen(1)
+    print("Waiting for drawing connection...")
+    conn, addr = draw_socket.accept()
+    print("Drawing connection established:", addr)
+
+    try:
+        while True:
+            if drawings:
+                # Send the latest drawing data
+                drawing_data = json.dumps(drawings).encode('utf-8')
+                conn.sendall(struct.pack("L", len(drawing_data)) + drawing_data)
+                drawings.clear()  # Clear sent drawings
+    except Exception as e:
+        print("Drawing connection error:", e)
+    finally:
+        conn.close()
+        draw_socket.close()
+
+# Start threads for video and drawing streams
+video_thread = threading.Thread(target=video_stream)
+draw_thread = threading.Thread(target=send_drawing)
+
+video_thread.start()
+draw_thread.start()
+
+video_thread.join()
+draw_thread.join()
+
+cap.release()
+cv2.destroyAllWindows()
