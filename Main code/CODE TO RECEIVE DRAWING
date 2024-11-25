@@ -1,0 +1,73 @@
+import cv2
+import socket
+import struct
+import pickle
+import json
+
+SERVER_IP = '172.20.10.3'  # Replace with mentor's IP
+VIDEO_PORT = 9999
+DRAW_PORT = 9997
+
+# Connect to video stream
+video_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+video_socket.connect((SERVER_IP, VIDEO_PORT))
+
+# Connect to drawing stream
+draw_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+draw_socket.connect((SERVER_IP, DRAW_PORT))
+
+# Buffers for receiving data
+video_data = b""
+payload_size = struct.calcsize("L")
+drawings = []
+
+def receive_drawings():
+    global drawings
+    while True:
+        packed_size = draw_socket.recv(payload_size)
+        if not packed_size:
+            break
+        size = struct.unpack("L", packed_size)[0]
+        draw_data = draw_socket.recv(size)
+        drawings = json.loads(draw_data.decode('utf-8'))
+
+# Start thread for receiving drawings
+import threading
+draw_thread = threading.Thread(target=receive_drawings)
+draw_thread.start()
+
+# Display video with drawings
+while True:
+    while len(video_data) < payload_size:
+        packet = video_socket.recv(4096)
+        if not packet:
+            break
+        video_data += packet
+    if len(video_data) < payload_size:
+        break
+
+    packed_msg_size = video_data[:payload_size]
+    video_data = video_data[payload_size:]
+    msg_size = struct.unpack("L", packed_msg_size)[0]
+
+    while len(video_data) < msg_size:
+        video_data += video_socket.recv(4096)
+
+    frame_data = video_data[:msg_size]
+    video_data = video_data[msg_size:]
+
+    # Deserialize frame
+    frame = pickle.loads(frame_data)
+
+    # Draw on frame
+    for line in drawings:
+        cv2.line(frame, (line[0], line[1]), (line[2], line[3]), (0, 0, 255), 2)
+
+    cv2.imshow("Video with Drawing", frame)
+
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+video_socket.close()
+draw_socket.close()
+cv2.destroyAllWindows()
