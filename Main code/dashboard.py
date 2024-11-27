@@ -21,15 +21,9 @@ def open_dashboard(root, refresh_main_window):
     title_label = Label(dashboard_win, text="Connected Devices", font=("Helvetica", 16, "bold"), fg="white", bg="#1A1A1A")
     title_label.pack(pady=10)
 
-    # Device Buttons (Iriun, EpocCam, Computer Camera)
+    # Iriun Stream Button
     iriun_button = Button(dashboard_win, text="Iriun Stream", bg="grey", fg="black", command=start_iriun_stream_with_audio)
     iriun_button.pack(pady=5)
-
-    epoccam_button = Button(dashboard_win, text="EpocCam Stream", bg="grey", fg="black", command=lambda: start_camera_feed(1))
-    epoccam_button.pack(pady=5)
-
-    computer_camera_button = Button(dashboard_win, text="Computer Camera", bg="grey", fg="black", command=lambda: start_camera_feed(0))
-    computer_camera_button.pack(pady=5)
 
     # New Zoom Meeting button
     zoom_button = Button(dashboard_win, text="Host Zoom Meeting", bg="grey", fg="black", command=host_zoom_meeting)
@@ -43,12 +37,10 @@ def open_dashboard(root, refresh_main_window):
 
 def start_iriun_stream_with_audio():
     """Starts the Iriun video and audio stream."""
-    iriun_audio_index = 1  # Using Device 1 as the Iriun microphone index
-    threading.Thread(target=view_camera_and_audio_feed, args=(2, iriun_audio_index), daemon=True).start()
-
-def start_camera_feed(camera_index):
-    """Starts a new thread to display the video feed for the specified camera index."""
-    threading.Thread(target=view_camera_and_audio_feed, args=(camera_index, None), daemon=True).start()
+    iriun_audio_index = 0  # Using Device 1 as the Iriun microphone index
+    
+    # Highlighted change: Set camera index to 1
+    threading.Thread(target=view_camera_and_audio_feed, args=(0, iriun_audio_index), daemon=True).start()
 
 def view_camera_and_audio_feed(camera_index, audio_device_index=None):
     """Opens and displays a video feed for the specified camera index and captures audio from the specified audio device."""
