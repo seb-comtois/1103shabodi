@@ -2,6 +2,7 @@ import cv2
 import threading
 import pyaudio
 from tkinter import Toplevel, Label, Button
+import webbrowser  # For opening the Zoom meeting link
 
 # Audio settings for Iriun
 AUDIO_FORMAT = pyaudio.paInt16
@@ -20,7 +21,7 @@ def open_dashboard(root, refresh_main_window):
     title_label = Label(dashboard_win, text="Connected Devices", font=("Helvetica", 16, "bold"), fg="white", bg="#1A1A1A")
     title_label.pack(pady=10)
 
-    # Device Buttons (Iriun, EpocCam, and Computer Camera)
+    # Device Buttons (Iriun, EpocCam, Computer Camera)
     iriun_button = Button(dashboard_win, text="Iriun Stream", bg="grey", fg="black", command=start_iriun_stream_with_audio)
     iriun_button.pack(pady=5)
 
@@ -29,6 +30,10 @@ def open_dashboard(root, refresh_main_window):
 
     computer_camera_button = Button(dashboard_win, text="Computer Camera", bg="grey", fg="black", command=lambda: start_camera_feed(0))
     computer_camera_button.pack(pady=5)
+
+    # New Zoom Meeting button
+    zoom_button = Button(dashboard_win, text="Host Zoom Meeting", bg="grey", fg="black", command=host_zoom_meeting)
+    zoom_button.pack(pady=5)
 
     # Back button to return to the main screen
     back_button = Button(dashboard_win, text="Back", command=lambda: [dashboard_win.destroy(), refresh_main_window(root)], bg="grey", fg="black")
@@ -96,3 +101,8 @@ def view_camera_and_audio_feed(camera_index, audio_device_index=None):
             output_stream.stop_stream()
             output_stream.close()
         audio.terminate()
+
+def host_zoom_meeting():
+    """Opens the Zoom meeting host link in the default web browser."""
+    zoom_host_link = "https://us04web.zoom.us/j/79614255182?pwd=LpSLx2wbdGP7gyXRua1DHBpfHgOPAN.1"
+    webbrowser.open(zoom_host_link)
